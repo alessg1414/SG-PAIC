@@ -15,21 +15,14 @@ export default function Sidebar() {
     <PrimeSidebar
       visible={isSidebarVisible}
       onHide={() => setSidebarVisible(false)}
-      showCloseIcon={false} // 🔹 Quita el botón de cierre de arriba
+      showCloseIcon={false}
       className="w-64 h-screen bg-white text-gray-900 border-r shadow-lg p-2 transition-transform duration-300"
     >
-      {/* Imagen favicon centrada */}
+      {/* Logo */}
       <div className="flex justify-center mb-4">
-        <Image
-          src="/favicon.png"
-          alt="Logo"
-          width={75}  
-          height={75}
-          priority
-        />
+        <Image src="/favicon.png" alt="Logo" width={75} height={75} priority />
       </div>
 
-      {/* Título del Sidebar */}
       <h2 className="text-lg font-bold text-gray-800 mb-6 text-center">Menú Principal</h2>
 
       <ul className="space-y-4">
@@ -52,6 +45,19 @@ export default function Sidebar() {
             className="w-full flex items-center justify-start bg-gray-100 text-gray-700 hover:bg-[#CDA95F] hover:text-white transition-all duration-300 p-3 rounded-lg"
             onClick={() => {
               router.push("/dashboard/convenios");
+              setSidebarVisible(false);
+            }}
+          />
+        </li>
+
+        {/* NUEVO: Proyectos */}
+        <li>
+          <Button
+            label="Proyectos"
+            icon="pi pi-briefcase"
+            className="w-full flex items-center justify-start bg-gray-100 text-gray-700 hover:bg-[#CDA95F] hover:text-white transition-all duration-300 p-3 rounded-lg"
+            onClick={() => {
+              router.push("/dashboard/proyectos");
               setSidebarVisible(false);
             }}
           />
@@ -81,7 +87,7 @@ export default function Sidebar() {
           />
         </li>
 
-        {/* Dropdown para ver el apartado de oportunidades */}
+        {/* Oportunidades profesionales (submenu) */}
         <li>
           <Button
             label="Oportunidades profesionales"
@@ -93,7 +99,7 @@ export default function Sidebar() {
             onClick={() => setShowSubmenu((prev) => !prev)}
           >
             <span className="ml-auto pr-0">
-              <i className={`pi pi-chevron-${showSubmenu ? "up" : "down"}`}></i>
+              <i className={`pi pi-chevron-${showSubmenu ? "up" : "down"}`} />
             </span>
           </Button>
 

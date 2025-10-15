@@ -72,6 +72,36 @@ export default function ConveniosTable() {
   const [selectedConvenioParaEliminar, setSelectedConvenioParaEliminar] = useState<Convenio | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+
+  // Opciones para el filtro de FASE
+  const opcionesFase = [
+    { label: "Todas las fases", value: "" },
+    { label: "Negociación", value: "Negociación" },
+    { label: "Visto Bueno", value: "Visto Bueno" },
+    { label: "Revisión Técnica", value: "Revisión Técnica" },
+    { label: "Análisis Legal", value: "Análisis Legal" },
+    { label: "Verificación Legal", value: "Verificación Legal" },
+    { label: "Firma", value: "Firma" },
+  ];
+
+  // Estados de filtro de FASE
+  const [faseFiltro, setFaseFiltro] = useState("");
+
+  // Opciones para el filtro de SECTOR
+  const opcionesSector = [
+    { label: "Todos los sectores", value: "" },
+    { label: "Bilateral", value: "Bilateral" },
+    { label: "Sociedad Civil", value: "Sociedad Civil" },
+    { label: "Privado", value: "Privado" },
+    { label: "Público", value: "Público" },
+    { label: "Academia", value: "Academia" },
+    { label: "Multilateral Regional", value: "Multilateral Regional" },
+    { label: "Multilateral Naciones Unidas", value: "Multilateral Naciones Unidas" },
+    { label: "Otro", value: "Otro" },
+  ];
+
+  // Estado para el filtro de sector
+  const [sectorFiltro, setSectorFiltro] = useState<string>("");
   
   const fetchData = async () => {
     try {
@@ -117,28 +147,118 @@ export default function ConveniosTable() {
       console.error("Error obteniendo datos:", error);
     }
   };
+
+  const textEditor = (options: any) => {
+    return (
+      <InputText
+        type="text"
+        value={options.value}
+        onChange={(e) => options.editorCallback(e.target.value)}
+      />
+    );
+  };
+
+  const rowExpansionTemplate = useCallback((rowData: Convenio) => {
+    const registros = registroProcesos.filter((registro) => registro.convenio_id === rowData.id);
+  
+    return (
+      <div className="p-4 text-sm">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-lg font-semibold">Registros del Convenio</h3>
+          <Button
+            label="Añadir Registro"
+            icon="pi pi-plus"
+            className="bg-[#172951] hover:bg-[#CDA95F] text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
+            onClick={() => {
+              setSelectedConvenioId(rowData.id);
+              setShowDialog(true);
+            }}
+          />
+        </div>
+  
+        <DataTable
+          key={`registros-${rowData.id}`}
+          value={registros}
+          dataKey="id"
+          responsiveLayout="scroll"
+          className="text-xs"
+        >
+          <Column field="entidad_proponente" header="Entidad Proponente" sortable editor={textEditor} />
+          <Column field="funcionario_emisor" header="Autoridad Ministerial" sortable editor={textEditor} />
+          <Column field="autoridad_ministerial" header="Funcionario Emisor" sortable editor={textEditor} />
+          <Column field="entidad_emisora" header="Entidad Emisora" sortable editor={textEditor} />
+          <Column field="funcionario_receptor" header="Funcionario Receptor" sortable editor={textEditor} />
+          <Column field="entidad_receptora" header="Entidad Receptora" editor={textEditor} />
+  
+          <Column
+            field="registro_proceso"
+            header="Registro del Proceso"
+            body={(row) => (
+              <span
+                className="text-blue-600 underline cursor-pointer hover:text-blue-800 transition"
+                onClick={() => {
+                  if (selectedRegistroProceso !== row.id) {
+                    setSelectedRegistroProceso(row.id);
+                    setShowTimeline(true);
+                  }
+                }}
+              >
+                {row.registro_proceso}
+              </span>
+            )}
+            style={{ width: "250px" }}
+          />
+  
+          <Column field="fecha_inicio" header="Fecha Inicio" editor={textEditor} body={(row) => formatDate(row.fecha_inicio)} sortable />
+          <Column field="tipo_convenio" header="Tipo de Convenio" editor={textEditor} />
+          <Column field="fase_registro" header="Fase" body={faseRegistroTemplate} sortable />
+  
+          <Column
+            header="Acciones"
+            body={(row) => (
+              <Button
+                icon="pi pi-pencil"
+                className="p-button-rounded p-button-warning p-button-sm"
+                onClick={() => abrirEditarRegistro(row)}
+              />
+            )}
+          />
+  
+          <Column
+            body={(row) => (
+              <Button
+                icon="pi pi-trash"
+                className="p-button-danger p-button-sm"
+                onClick={() => handleDeleteRegistro(row.id)}
+              />
+            )}
+            style={{ textAlign: "center", width: "50px" }}
+          />
+        </DataTable>
+      </div>
+    );
+  }, [registroProcesos, selectedRegistroProceso]);
   
   useEffect(() => {
     let mounted = true;
-  const load = async () => {
-    await fetchData();
-    if (mounted) {
-      setFilters({
-        global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-      });
-    }
-  };
-  load();
-  return () => {
-    mounted = false;
-  };
- 
-    fetchData();
-    setFilters({
-      global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    });
+    const load = async () => {
+      await fetchData();
+      if (mounted) {
+        setFilters({
+          global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+        });
+        setIsMounted(true);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
+  if (!isMounted) {
+    return null;
+  }
   
   const updateFaseActual = async (convenioId: number) => {
     try {
@@ -166,8 +286,8 @@ export default function ConveniosTable() {
   
   const consecutivoTemplate = (rowData: Convenio) => {
     return (
-<span className="flex justify-center items-center bg-[#CDA95F] text-white font-bold text-sm rounded-full w-8 h-8">
-{rowData.consecutivo_numerico}
+      <span className="flex justify-center items-center bg-[#CDA95F] text-white font-bold text-sm rounded-full w-8 h-8">
+        {rowData.consecutivo_numerico}
       </span>
     );
   };
@@ -179,7 +299,6 @@ export default function ConveniosTable() {
   
     return <ProgressBar value={progress} className="w-32 h-3" showValue={false} />;
   };
-  
   
   const faseRegistroTemplate = (rowData: RegistroProceso) => {
     const faseColors: Record<string, string> = {
@@ -244,7 +363,6 @@ export default function ConveniosTable() {
     });
   };
   
-  
   const handleAddRegistro = async () => {
     if (!selectedConvenioId) {
       toast.current?.show({
@@ -294,8 +412,6 @@ export default function ConveniosTable() {
       });
     }
   };
-  
-  
 
   const dialogFooter = (
     <div className="flex justify-end gap-2 p-4">
@@ -315,6 +431,7 @@ export default function ConveniosTable() {
       />
     </div>
   );
+
   const handleDeleteConvenio = async () => {
     if (!selectedConvenioParaEliminar) return;
   
@@ -354,29 +471,11 @@ export default function ConveniosTable() {
     setSelectedConvenioParaEliminar(null); 
   };
 
-  // const onRowClick = (event: { data: Convenio }) => {
-  //   if (!seleccionandoConvenio) return; 
-  
-  //   setSelectedConvenioParaEliminar(event.data);
-  //   setShowConfirmDialog(true);
-  // };
-   
-  // const confirmarEliminarConvenio = () => {
-  //   if (!selectedConvenioParaEliminar) {
-  //     toast.current?.show({ severity: "warn", summary: "Atención", detail: "Seleccione un convenio", life: 3000 });
-  //     return;
-  //   }
-  //   setShowConfirmDialog(true);
-  // };
-
   const onSelectionChange = (e:any) => {
     if (!seleccionandoConvenio) return; 
-  
     setSelectedConvenioParaEliminar(e.value); 
     setShowConfirmDialog(true); 
   };
-  
-  
   
   const handleDeleteRegistro = async (id: number) => {
     try {
@@ -394,333 +493,269 @@ export default function ConveniosTable() {
     }
     fetchData();
   };
+
   
 
-  const textEditor = (options: any) => {
-    return (
-      <InputText
-        type="text"
-        value={options.value}
-        onChange={(e) => options.editorCallback(e.target.value)}
-      />
-    );
-  };
+  // Filter convenios based on search term, phase, and sector
+  const conveniosFiltrados = convenios.filter(c => {
+    const filtraBusqueda =
+      !globalFilter ||
+      c.nombre?.toLowerCase().includes(globalFilter.toLowerCase()) ||
+      c.cooperante?.toLowerCase().includes(globalFilter.toLowerCase());
 
-  const rowExpansionTemplate = useCallback((rowData: Convenio) => {
-    const registros = registroProcesos.filter((registro) => registro.convenio_id === rowData.id);
-  
-    return (
-      <div className="p-4 text-sm">
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="text-lg font-semibold">Registros del Convenio</h3>
-          <Button
-            label="Añadir Registro"
-            icon="pi pi-plus"
-            className="bg-[#172951] hover:bg-[#CDA95F] text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
-            onClick={() => {
-              setSelectedConvenioId(rowData.id);
-              setShowDialog(true);
-            }}
-          />
-        </div>
-  
-        <DataTable
-          key={`registros-${rowData.id}`} // 🔑 Añadido key único
-          value={registros}
-          dataKey="id"
-          responsiveLayout="scroll"
-          className="text-xs"
-        >
-          <Column field="entidad_proponente" header="Entidad Proponente" sortable editor={textEditor} />
-          <Column field="funcionario_emisor" header="Autoridad Ministerial" sortable editor={textEditor} />
-          <Column field="autoridad_ministerial" header="Funcionario Emisor" sortable editor={textEditor} />
-          <Column field="entidad_emisora" header="Entidad Emisora" sortable editor={textEditor} />
-          <Column field="funcionario_receptor" header="Funcionario Receptor" sortable editor={textEditor} />
-          <Column field="entidad_receptora" header="Entidad Receptora" editor={textEditor} />
-  
-          <Column
-            field="registro_proceso"
-            header="Registro del Proceso"
-            body={(row) => (
-              <span
-                className="text-blue-600 underline cursor-pointer hover:text-blue-800 transition"
-                onClick={() => {
-                  if (selectedRegistroProceso !== row.id) {
-                    setSelectedRegistroProceso(row.id);
-                    setShowTimeline(true);
-                  }
-                }}
-              >
-                {row.registro_proceso}
-              </span>
-            )}
-            style={{ width: "250px" }}
-          />
-  
-          <Column field="fecha_inicio" header="Fecha Inicio" editor={textEditor} body={(row) => formatDate(row.fecha_inicio)} sortable />
-          <Column field="tipo_convenio" header="Tipo de Convenio" editor={textEditor} />
-          <Column field="fase_registro" header="Fase" body={faseRegistroTemplate} sortable />
-  
-          <Column
-            header="Acciones"
-            body={(row) => (
-              <Button
-                icon="pi pi-pencil"
-                className="p-button-rounded p-button-warning p-button-sm"
-                onClick={() => abrirEditarRegistro(row)}
-              />
-            )}
-          />
-  
-          <Column
-            body={(row) => (
-              <Button
-                icon="pi pi-trash"
-                className="p-button-danger p-button-sm"
-                onClick={() => handleDeleteRegistro(row.id)}
-              />
-            )}
-            style={{ textAlign: "center", width: "50px" }}
-          />
-        </DataTable>
-      </div>
-    );
-  }, [registroProcesos, selectedRegistroProceso]);
+    const filtraFase = !faseFiltro || c.fase_actual === faseFiltro;
+    const filtraSector = !sectorFiltro || c.sector === sectorFiltro;
+
+    return filtraBusqueda && filtraFase && filtraSector;
+  });
 
   return (
     <>
+      <Toast ref={toast} />
+      
       <div className="flex justify-between items-center mb-4">
-  {/* Buscador */}
-  <div className="flex items-center gap-2 w-full max-w-md">
-    <i className="pi pi-search text-gray-500" />
-    <InputText
-      value={globalFilter}
-      onChange={(e) => {
-        setGlobalFilter(e.target.value);
-        setFilters({ global: { value: e.target.value, matchMode: FilterMatchMode.CONTAINS } });
-      }}
-      placeholder="Buscar"
-      className="p-inputtext-sm w-full border border-gray-400 rounded-md px-3 py-2 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
-    />
-  </div>
+        {/* Search and filters */}
+        <div className="flex items-center gap-2">
+          <i className="pi pi-search text-gray-500" />
+          <InputText
+            value={globalFilter}
+            onChange={(e) => {
+              setGlobalFilter(e.target.value);
+              setFilters({ global: { value: e.target.value, matchMode: FilterMatchMode.CONTAINS } });
+            }}
+            placeholder="Buscar"
+            className="p-inputtext-sm w-80 h-14 border border-gray-400 rounded-md px-4 py-2 bg-white shadow-sm 
+                       focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-blue-500 hover:shadow-lg transition-all duration-300 focus:bg-blue-50"
+          />
 
-  <div className="flex justify-between items-center mb-4">
-  {/* Contenedor de botones alineados */}
-  <div className="flex gap-4 mb-4">
-  <Button 
-    label="Añadir Convenio" 
-    icon="pi pi-plus" 
-    className="bg-[#172951] hover:bg-[#CDA95F] text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
-    onClick={() => setShowDialogConvenio(true)}
-  />
-  
-  <Button 
-  label="Eliminar Convenio" 
-  icon="pi pi-trash" 
-  className="p-button-danger font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 transform bg-red-600 hover:bg-red-700 text-white"
-  onClick={activarSeleccionConvenio}
-/>
+          {/* Phase Filter */}      
+          <Dropdown
+            value={faseFiltro}
+            options={opcionesFase}
+            onChange={(e) => setFaseFiltro(e.value)}
+            optionLabel="label"
+            optionValue="value"
+            className="p-inputtext-sm center border border-gray-400 rounded-md px-4 py-2 bg-white shadow-sm 
+                       focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-blue-500 hover:shadow-lg transition-all duration-300 focus:bg-blue-50"
+          />
 
-</div>
+          {/* Sector Filter */}
+          <Dropdown
+            value={sectorFiltro}
+            options={opcionesSector}
+            onChange={e => setSectorFiltro(e.value)}
+            optionLabel="label"
+            optionValue="value"
+            className="p-inputtext-sm center border border-gray-400 rounded-md px-4 py-2 bg-white shadow-sm 
+                       focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-blue-500 hover:shadow-lg transition-all duration-300 focus:bg-blue-50"
+          />
+        </div>
 
+        {/* Buttons */}
+        <div className="flex gap-4 mb-4">
+          <Button 
+            label="Añadir Convenio" 
+            icon="pi pi-plus" 
+            className="bg-[#172951] hover:bg-[#CDA95F] text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
+            onClick={() => setShowDialogConvenio(true)}
+          />
+          
+          <Button 
+            label="Eliminar Convenio" 
+            icon="pi pi-trash" 
+            className="p-button-danger font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 transform bg-red-600 hover:bg-red-700 text-white"
+            onClick={activarSeleccionConvenio}
+          />
+        </div>
+      </div>
 
-</div>
-
-</div>
-
-<DataTable
-  value={convenios}
-  expandedRows={expandedRows}
-  onRowToggle={(e) => setExpandedRows(e.data)}
-  rowExpansionTemplate={rowExpansionTemplate}
-  dataKey="id"
-  paginator
-  rows={5}
-  filters={filters}
-  globalFilterFields={["nombre", "cooperante", "sector", "consecutivo_numerico"]}
-  responsiveLayout="scroll"
-  className={`custom-table ${seleccionandoConvenio ? "cursor-pointer" : ""}`}
-  selectionMode={seleccionandoConvenio ? "single" : undefined} 
-  selection={selectedConvenioParaEliminar}
-  onSelectionChange={onSelectionChange} 
->
-  {seleccionandoConvenio && <Column selectionMode="single" headerStyle={{ width: "3rem" }} className="p-selection-column"/>}
-  <Column expander style={{ width: "5rem" }} />
-  <Column field="consecutivo_numerico" header="Registro" body={consecutivoTemplate} sortable />
-  <Column field="nombre" header="Nombre" sortable />
-  <Column field="cooperante" header="Cooperante" sortable />
-  <Column field="sector" header="Sector" sortable />
-  <Column field="fase_actual" header="Progreso" body={faseProgreso} sortable />
-</DataTable>
-
+      <DataTable
+        value={conveniosFiltrados}
+        expandedRows={expandedRows}
+        onRowToggle={(e) => setExpandedRows(e.data)}
+        rowExpansionTemplate={rowExpansionTemplate}
+        dataKey="id"
+        paginator
+        rows={5}
+        filters={filters}
+        globalFilterFields={["nombre", "cooperante", "sector", "consecutivo_numerico"]}
+        responsiveLayout="scroll"
+        className={`custom-table ${seleccionandoConvenio ? "cursor-pointer" : ""}`}
+        selectionMode={seleccionandoConvenio ? "single" : undefined} 
+        selection={selectedConvenioParaEliminar}
+        onSelectionChange={onSelectionChange} 
+      >
+        {seleccionandoConvenio && <Column selectionMode="single" headerStyle={{ width: "3rem" }} className="p-selection-column"/>}
+        <Column expander style={{ width: "5rem" }} />
+        <Column field="consecutivo_numerico" header="Registro" body={consecutivoTemplate} sortable />
+        <Column field="nombre" header="Nombre" sortable />
+        <Column field="cooperante" header="Cooperante" sortable />
+        <Column field="sector" header="Sector" sortable />
+        <Column field="fase_actual" header="Progreso" body={faseProgreso} sortable />
+      </DataTable>
 
       <Dialog
-  header="Añadir Registro"
-  visible={showDialog}
-  style={{ width: "50vw" }}
-  footer={dialogFooter}
-  onHide={() => setShowDialog(false)}
-  className="p-dialog-custom"
->
-  <div className="grid grid-cols-2 gap-4 p-6">
+        header="Añadir Registro"
+        visible={showDialog}
+        style={{ width: "50vw" }}
+        footer={dialogFooter}
+        onHide={() => setShowDialog(false)}
+        className="p-dialog-custom"
+      >
+        <div className="grid grid-cols-2 gap-4 p-6">
+          {/* Entidad proponente */}
+          <div className="flex flex-col">
+            <label className="font-semibold text-gray-600 mb-1">Entidad proponente</label>
+            <InputText 
+              className="p-inputtext-sm p-2 border border-gray-300 rounded-lg"
+              placeholder="Entidad proponente" 
+              onChange={(e) => setNewRegistro({ ...newRegistro, entidad_proponente: e.target.value })} 
+            />
+          </div>
+          
+          {/* Autoridad Ministerial */}
+          <div className="flex flex-col">
+            <label className="font-semibold text-gray-600 mb-1">Autoridad Ministerial</label>
+            <Dropdown
+              className="p-inputtext-sm p-2 border border-gray-300 rounded-lg"
+              value={newRegistro.autoridad_ministerial}
+              options={[
+                { label: "Ministro de Educación Pública", value: "Ministro de Educación Pública" },
+                { label: "Viceministerio Académico de Educación Pública", value: "Viceministerio Académico de Educación Pública" },
+                { label: "Viceministerio Administrativo de Educación Pública", value: "Viceministerio Administrativo de Educación Pública" },
+                { label: "Viceministerio de Planificación y Coordinación Regional", value: "Viceministerio de Planificación y Coordinación Regional" },
+              ]}
+              placeholder="Seleccione la Autoridad Ministerial"
+              onChange={(e) => setNewRegistro({ ...newRegistro, autoridad_ministerial: e.value })}
+            />
+          </div>
 
-     {/* Entidad proponente */}
-     <div className="flex flex-col">
-      <label className="font-semibold text-gray-600 mb-1">Entidad proponente</label>
-      <InputText 
-        className="p-inputtext-sm p-2 border border-gray-300 rounded-lg"
-        placeholder="Entidad proponente" 
-        onChange={(e) => setNewRegistro({ ...newRegistro, entidad_proponente: e.target.value })} 
-      />
-    </div>
-    
-  {/* Autoridad Ministerial */}
-  <div className="flex flex-col">
-  <label className="font-semibold text-gray-600 mb-1">Autoridad Ministerial</label>
-  <Dropdown
-    className="p-inputtext-sm p-2 border border-gray-300 rounded-lg"
-    value={newRegistro.autoridad_ministerial}
-    options={[
-      { label: "Ministro de Educación Pública", value: "Ministro de Educación Pública" },
-      { label: "Viceministerio Académico de Educación Pública", value: "Viceministerio Académico de Educación Pública" },
-      { label: "Viceministerio Administrativo de Educación Pública", value: "Viceministerio Administrativo de Educación Pública" },
-      { label: "Viceministerio de Planificación y Coordinación Regional", value: "Viceministerio de Planificación y Coordinación Regional" },
-    ]}
-    placeholder="Seleccione la Autoridad Ministerial"
-    onChange={(e) => setNewRegistro({ ...newRegistro, autoridad_ministerial: e.value })}
-  />
+          {/* Funcionario Emisor */}
+          <div className="flex flex-col">
+            <label className="font-semibold text-gray-600 mb-1">Funcionario Emisor</label>
+            <InputText 
+              className="p-inputtext-sm p-2 border border-gray-300 rounded-lg"
+              placeholder="Funcionario Emisor" 
+              onChange={(e) => setNewRegistro({ ...newRegistro, funcionario_emisor: e.target.value })} 
+            />
+          </div>
 
-</div>
+          {/* Entidad Emisora */}
+          <div className="flex flex-col">
+            <label className="font-semibold text-gray-600 mb-1">Entidad Emisora</label>
+            <InputText 
+              className="p-inputtext-sm p-2 border border-gray-300 rounded-lg"
+              placeholder="Entidad Emisora" 
+              onChange={(e) => setNewRegistro({ ...newRegistro, entidad_emisora: e.target.value })} 
+            />
+          </div>
 
+          {/* Funcionario Receptor */}
+          <div className="flex flex-col">
+            <label className="font-semibold text-gray-600 mb-1">Funcionario Receptor</label>
+            <InputText 
+              className="p-inputtext-sm p-2 border border-gray-300 rounded-lg"
+              placeholder="Funcionario Receptor" 
+              onChange={(e) => setNewRegistro({ ...newRegistro, funcionario_receptor: e.target.value })} 
+            />
+          </div>
 
-    {/* Funcionario Emisor */}
-    <div className="flex flex-col">
-      <label className="font-semibold text-gray-600 mb-1">Funcionario Emisor</label>
-      <InputText 
-        className="p-inputtext-sm p-2 border border-gray-300 rounded-lg"
-        placeholder="Funcionario Emisor" 
-        onChange={(e) => setNewRegistro({ ...newRegistro, funcionario_emisor: e.target.value })} 
-      />
-    </div>
+          {/* Entidad Receptora */}
+          <div className="flex flex-col">
+            <label className="font-semibold text-gray-600 mb-1">Entidad Receptora</label>
+            <InputText 
+              className="p-inputtext-sm p-2 border border-gray-300 rounded-lg"
+              placeholder="Entidad Receptora" 
+              onChange={(e) => setNewRegistro({ ...newRegistro, entidad_receptora: e.target.value })} 
+            />
+          </div>
 
-    {/* Entidad Emisora */}
-    <div className="flex flex-col">
-      <label className="font-semibold text-gray-600 mb-1">Entidad Emisora</label>
-      <InputText 
-        className="p-inputtext-sm p-2 border border-gray-300 rounded-lg"
-        placeholder="Entidad Emisora" 
-        onChange={(e) => setNewRegistro({ ...newRegistro, entidad_emisora: e.target.value })} 
-      />
-    </div>
+          {/* Tipo de Convenio */}
+          <div className="flex flex-col">
+            <label className="font-semibold text-gray-600 mb-1">Tipo de Convenio</label>
+            <Dropdown 
+              className="p-inputtext-sm p-2 border border-gray-300 rounded-lg appearance-none"
+              value={newRegistro.tipo_convenio} 
+              options={[{ label: "Marco", value: "Marco" }, { label: "Específico", value: "Específico" }, { label: "Adenda", value: "Adenda" }]}
+              placeholder="Seleccione el Tipo de Convenio"
+              onChange={(e) => setNewRegistro({ ...newRegistro, tipo_convenio: e.value })}
+            />
+          </div>
 
-    {/* Funcionario Receptor */}
-    <div className="flex flex-col">
-      <label className="font-semibold text-gray-600 mb-1">Funcionario Receptor</label>
-      <InputText 
-        className="p-inputtext-sm p-2 border border-gray-300 rounded-lg"
-        placeholder="Funcionario Receptor" 
-        onChange={(e) => setNewRegistro({ ...newRegistro, funcionario_receptor: e.target.value })} 
-      />
-    </div>
+          {/* Fecha Inicio */}
+          <div className="flex flex-col">
+            <label className="font-semibold text-gray-600 mb-1">Fecha Inicio</label>
+            <Calendar 
+              className="p-inputtext-sm border border-gray-300 rounded-lg p-2"
+              placeholder="Seleccionar fecha"
+              showIcon
+              onChange={(e) => 
+                setNewRegistro({ 
+                  ...newRegistro, 
+                  fecha_inicio: e.value ? new Date(e.value).toISOString().split("T")[0] : "" 
+                }) 
+              }
+            />
+          </div>
 
-    {/* Entidad Receptora */}
-    <div className="flex flex-col">
-      <label className="font-semibold text-gray-600 mb-1">Entidad Receptora</label>
-      <InputText 
-        className="p-inputtext-sm p-2 border border-gray-300 rounded-lg"
-        placeholder="Entidad Receptora" 
-        onChange={(e) => setNewRegistro({ ...newRegistro, entidad_receptora: e.target.value })} 
-      />
-    </div>
+          {/* Registro del Proceso */}
+          <div className="flex flex-col col-span-2">
+            <label className="font-semibold text-gray-600 mb-1">Registro del Proceso</label>
+            <textarea
+              className="p-inputtext-sm w-full border border-gray-300 rounded-lg p-2 bg-white resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              placeholder="Ingrese detalles del proceso"
+              value={newRegistro.registro_proceso || ""}
+              onChange={(e) => setNewRegistro({ ...newRegistro, registro_proceso: e.target.value })} 
+            />
+          </div>
 
-{/* Tipo de Convenio */}
-<div className="flex flex-col">
-  <label className="font-semibold text-gray-600 mb-1">Tipo de Convenio</label>
-  <Dropdown 
-    className="p-inputtext-sm p-2 border border-gray-300 rounded-lg appearance-none"
-    value={newRegistro.tipo_convenio} 
-    options={[{ label: "Marco", value: "Marco" }, { label: "Específico", value: "Específico" }, { label: "Adenda", value: "Adenda" }]}
-    placeholder="Seleccione el Tipo de Convenio"
-    onChange={(e) => setNewRegistro({ ...newRegistro, tipo_convenio: e.value })}
-  />
-</div>
+          {/* Selección de Fase del Registro */}
+          <div className="flex flex-col col-span-2">
+            <label className="font-semibold text-gray-600 mb-1">Fase del Registro</label>
+            <Dropdown 
+              className="p-inputtext-sm p-2 border border-gray-300 rounded-lg"
+              options={fases}
+              placeholder="Seleccione una fase"
+              value={newRegistro.fase_registro}
+              onChange={(e) => setNewRegistro({ ...newRegistro, fase_registro: e.value })}
+            />
+          </div>
+        </div>
+      </Dialog>
 
-    {/* Fecha Inicio */}
-    <div className="flex flex-col">
-      <label className="font-semibold text-gray-600 mb-1">Fecha Inicio</label>
-      <Calendar 
-        className="p-inputtext-sm border border-gray-300 rounded-lg p-2"
-        placeholder="Seleccionar fecha"
-        showIcon
-        onChange={(e) => 
-          setNewRegistro({ 
-            ...newRegistro, 
-            fecha_inicio: e.value ? new Date(e.value).toISOString().split("T")[0] : "" 
-          }) 
+      <Dialog
+        visible={showConfirmDialog}
+        style={{ width: "450px" }}
+        header="Confirmar Eliminación"
+        modal
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button label="Cancelar" icon="pi pi-times" onClick={() => setShowConfirmDialog(false)} className="p-button-text" />
+            <Button label="Eliminar" icon="pi pi-check" className="p-button-danger" onClick={handleDeleteConvenio} />
+          </div>
         }
-              />
-    </div>
+        onHide={() => setShowConfirmDialog(false)}
+      >
+        {selectedConvenioParaEliminar && (
+          <div>
+            <p className="text-gray-700">¿Seguro que quieres eliminar este convenio?</p>
+            <p className="font-semibold text-red-600">{selectedConvenioParaEliminar.nombre}</p>
+          </div>
+        )}
+      </Dialog>
 
-{/* Registro del Proceso */}
-<div className="flex flex-col col-span-2">
-  <label className="font-semibold text-gray-600 mb-1">Registro del Proceso</label>
-  <textarea
-    className="p-inputtext-sm w-full border border-gray-300 rounded-lg p-2 bg-white resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-    placeholder="Ingrese detalles del proceso"
-    value={newRegistro.registro_proceso || ""}
-    onChange={(e) => setNewRegistro({ ...newRegistro, registro_proceso: e.target.value })} 
-  />
-</div>
-
-    {/* Selección de Fase del Registro */}
-    <div className="flex flex-col col-span-2">
-      <label className="font-semibold text-gray-600 mb-1">Fase del Registro</label>
-      <Dropdown 
-        className="p-inputtext-sm p-2 border border-gray-300 rounded-lg"
-        options={fases}
-        placeholder="Seleccione una fase"
-        value={newRegistro.fase_registro}
-        onChange={(e) => setNewRegistro({ ...newRegistro, fase_registro: e.value })}
+      <TimelineModal 
+        visible={showTimeline} 
+        onHide={() => setShowTimeline(false)} 
+        registroProcesoId={selectedRegistroProceso ? Number(selectedRegistroProceso) : null}
       />
-    </div>
-  </div>
-</Dialog>
-
-<Dialog
-  visible={showConfirmDialog}
-  style={{ width: "450px" }}
-  header="Confirmar Eliminación"
-  modal
-  footer={
-    <div className="flex justify-end gap-2">
-      <Button label="Cancelar" icon="pi pi-times" onClick={() => setShowConfirmDialog(false)} className="p-button-text" />
-      <Button label="Eliminar" icon="pi pi-check" className="p-button-danger" onClick={handleDeleteConvenio} />
-    </div>
-  }
-  onHide={() => setShowConfirmDialog(false)}
->
-  {selectedConvenioParaEliminar && (
-    <div>
-      <p className="text-gray-700">¿Seguro que quieres eliminar este convenio?</p>
-      <p className="font-semibold text-red-600">{selectedConvenioParaEliminar.nombre}</p>
-    </div>
-  )}
-</Dialog>
-
-
-<TimelineModal 
-  visible={showTimeline} 
-  onHide={() => setShowTimeline(false)} 
-  registroProcesoId={selectedRegistroProceso ? Number(selectedRegistroProceso) : null}
-/>
-<ConvenioDialog visible={showDialogConvenio} onHide={() => setShowDialogConvenio(false)} onRefresh={fetchData} />
-<EditarRegistroDialog
-  visible={showEditDialog}
-  onHide={() => setShowEditDialog(false)}
-  registro={registroSeleccionado}
-  onSave={actualizarRegistroLocal}
-/>
-
+      <ConvenioDialog visible={showDialogConvenio} onHide={() => setShowDialogConvenio(false)} onRefresh={fetchData} />
+      <EditarRegistroDialog
+        visible={showEditDialog}
+        onHide={() => setShowEditDialog(false)}
+        registro={registroSeleccionado}
+        onSave={actualizarRegistroLocal}
+      />
     </>
   );
 }
