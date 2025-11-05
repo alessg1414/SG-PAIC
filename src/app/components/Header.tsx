@@ -38,7 +38,7 @@ export default function Header() {
           height={60}
           priority
           className="cursor-pointer"
-          onClick={() => router.push("/")}
+          onClick={() => router.push("/dashboard")}
         />
       </div>
 
