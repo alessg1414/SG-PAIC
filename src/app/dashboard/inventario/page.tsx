@@ -1,5 +1,5 @@
 import Inventario from '@/app/components//Inventario';
-
+/* comentario */
 export default function InventarioPage() {
   return (
     <div className="p-6 bg-gray-100 min-h-screen">

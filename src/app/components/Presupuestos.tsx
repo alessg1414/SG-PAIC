@@ -7,8 +7,11 @@ import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Toast } from "primereact/toast";
+import { Dialog } from "primereact/dialog";
 import { FilterMatchMode } from "primereact/api";
 import { API_BASE } from "@/utils/api";
+import AgregarOrdenDialog from "./AgregarOrdenDialog";
+import EditarOrdenDialog from "./EditarOrdenDialog";
 
 // Interfaces
 interface SubpartidaContratacion {
@@ -65,6 +68,14 @@ interface SolicitudPresupuesto {
 }
 
 export default function PresupuestosTable() {
+  // ...existing code...
+  const [anoFiltro, setAnoFiltro] = useState<string>("");
+  // Diálogos para orden
+  const [showAgregarOrden, setShowAgregarOrden] = useState(false);
+  const [showEditarOrden, setShowEditarOrden] = useState(false);
+  const [ordenSeleccionada, setOrdenSeleccionada] = useState<SolicitudPresupuesto | null>(null);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [ordenAEliminar, setOrdenAEliminar] = useState<SolicitudPresupuesto | null>(null);
   const toast = useRef<Toast>(null);
   
   const [subpartidas, setSubpartidas] = useState<SubpartidaContratacion[]>([]);
@@ -81,12 +92,14 @@ export default function PresupuestosTable() {
     setIsMounted(true);
   }, []);
 
-  // Cargar solicitudes cuando se selecciona una subpartida
+  // Cargar solicitudes cuando se selecciona una subpartida o año
   useEffect(() => {
-    if (subpartidaFiltro) {
-      fetchFichaYSolicitudes(subpartidaFiltro);
+    if (subpartidaFiltro && anoFiltro) {
+      fetchFichaYSolicitudes(subpartidaFiltro, anoFiltro);
+    } else if (subpartidaFiltro) {
+      fetchFichaYSolicitudes(subpartidaFiltro, "");
     }
-  }, [subpartidaFiltro]);
+  }, [subpartidaFiltro, anoFiltro]);
 
   const fetchSubpartidas = async () => {
     try {
@@ -104,36 +117,38 @@ export default function PresupuestosTable() {
     }
   };
 
-  const fetchFichaYSolicitudes = async (subpartida: string) => {
+  const fetchFichaYSolicitudes = async (subpartida: string, ano: string) => {
     try {
-      // Buscar la ficha de la subpartida seleccionada
-      const fichaEncontrada = subpartidas.find(s => s.subpartida === subpartida);
-      
+      // Buscar la ficha de la subpartida seleccionada y año
+      let fichaEncontrada = subpartidas.find(s => s.subpartida === subpartida && (ano ? s.ano_contrato === ano : true));
+      if (!fichaEncontrada && ano) {
+        // Si no hay coincidencia exacta, buscar solo por subpartida
+        fichaEncontrada = subpartidas.find(s => s.subpartida === subpartida);
+      }
       if (!fichaEncontrada) return;
 
-      // Obtener todas las solicitudes de esta subpartida
+      // Obtener todas las solicitudes de esta subpartida y año
       const response = await fetch(`${API_BASE}solicitud_presupuesto/`);
       const data = await response.json();
-      
-      const solicitudesFiltradas = (data || []).filter(
+      let solicitudesFiltradas = (data || []).filter(
         (s: SolicitudPresupuesto) => s.subpartida_contratacion_id === fichaEncontrada.id
       );
+      if (ano) {
+        solicitudesFiltradas = fichaEncontrada.ano_contrato === ano ? solicitudesFiltradas : [];
+      }
 
       // Calcular monto consumido y saldo
       const montoConsumido = solicitudesFiltradas.reduce(
         (sum: number, s: SolicitudPresupuesto) => sum + Number(s.total_factura || 0), 
         0
       );
-      
       const fichaConCalculos = {
         ...fichaEncontrada,
         monto_consumido: montoConsumido,
         saldo: fichaEncontrada.presupuesto_asignado - montoConsumido
       };
-
       setFichaSeleccionada(fichaConCalculos);
       setSolicitudes(solicitudesFiltradas);
-      
     } catch (error) {
       console.error("Error obteniendo datos:", error);
       toast.current?.show({ 
@@ -145,8 +160,11 @@ export default function PresupuestosTable() {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return `₡ ${value.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatCurrency = (value: number | string | null | undefined) => {
+    if (!value) return "₡ 0.00";
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(num)) return "₡ 0.00";
+    return `₡ ${num.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const formatDate = (dateString: string) => {
@@ -290,10 +308,16 @@ export default function PresupuestosTable() {
     );
   }, []);
 
-  // Opciones de subpartidas para el dropdown
-  const opcionesSubpartida = subpartidas.map(s => ({
-    label: `${s.subpartida} - ${s.nombre_subpartida}`,
-    value: s.subpartida
+  // Opciones de subpartidas para el dropdown (solo subpartida)
+  const opcionesSubpartida = Array.from(new Set(subpartidas.map(s => s.subpartida))).map(sub => ({
+    label: sub,
+    value: sub
+  }));
+
+  // Opciones de años para el dropdown
+  const opcionesAno = Array.from(new Set(subpartidas.map(s => s.ano_contrato))).map(ano => ({
+    label: ano,
+    value: ano
   }));
 
   if (!isMounted) return null;
@@ -310,26 +334,26 @@ export default function PresupuestosTable() {
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-2">
             <i className="pi pi-search text-gray-500" />
-            <InputText
-              value={globalFilter}
-              onChange={(e) => setGlobalFilter(e.target.value)}
-              placeholder="Buscar por descripción..."
-              className="p-inputtext-sm w-80 h-12 border border-gray-400 rounded-md px-4 py-2 bg-white shadow-sm 
-                         focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-blue-500 hover:shadow-lg 
-                         transition-all duration-300"
-            />
 
             <Dropdown
               value={subpartidaFiltro}
               options={opcionesSubpartida}
               onChange={(e) => setSubpartidaFiltro(e.value)}
-              placeholder="Seleccione subpartida *"
+              placeholder="Subpartida *"
               className="p-inputtext-sm border border-gray-400 rounded-md px-4 py-2 bg-white shadow-sm 
                          focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-blue-500 hover:shadow-lg 
-                         transition-all duration-300 w-96"
+                         transition-all duration-300 w-56"
+            />
+            <Dropdown
+              value={anoFiltro}
+              options={opcionesAno}
+              onChange={(e) => setAnoFiltro(e.value)}
+              placeholder="Año *"
+              className="p-inputtext-sm border border-gray-400 rounded-md px-4 py-2 bg-white shadow-sm 
+                         focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-blue-500 hover:shadow-lg 
+                         transition-all duration-300 w-40"
             />
           </div>
-
           <div className="flex gap-4">
             <Button 
               label="Añadir orden" 
@@ -337,14 +361,7 @@ export default function PresupuestosTable() {
               className="bg-[#172951] hover:bg-[#CDA95F] text-white font-semibold py-2 px-4 rounded-lg 
                          shadow-md transition-all duration-300 transform hover:scale-105"
               disabled={!subpartidaFiltro}
-            />
-            
-            <Button 
-              label="Eliminar orden" 
-              icon="pi pi-trash" 
-              className="p-button-danger font-semibold py-2 px-4 rounded-lg shadow-md transition-all 
-                         duration-300 transform bg-red-600 hover:bg-red-700 text-white"
-              disabled={!subpartidaFiltro}
+              onClick={() => setShowAgregarOrden(true)}
             />
           </div>
         </div>
@@ -363,6 +380,11 @@ export default function PresupuestosTable() {
                   <div>
                     <p className="text-white/70 text-xs mb-1">Descripción</p>
                     <p className="leading-relaxed">{fichaSeleccionada.descripcion_contratacion}</p>
+                  </div>
+
+                  <div className="pt-3 border-t border-white/20">
+                    <p className="text-white/70 text-xs mb-1">Año</p>
+                    <p className="font-mono">{fichaSeleccionada.ano_contrato}</p>
                   </div>
 
                   <div className="pt-3 border-t border-white/20">
@@ -420,7 +442,7 @@ export default function PresupuestosTable() {
                                rounded-lg shadow-md transition-all duration-300 text-sm"
                   />
                   <Button
-                    label="Editar"
+                    label="Editar subpartido"
                     icon="pi pi-pencil"
                     className="flex-1 bg-white/10 hover:bg-white/20 text-white font-semibold py-2 px-3 
                                rounded-lg shadow-md transition-all duration-300 text-sm"
@@ -487,9 +509,74 @@ export default function PresupuestosTable() {
                   </span>
                 )}
               />
+              <Column
+                header="Acciones"
+                body={(row) => (
+                  <div className="flex gap-2">
+                    <Button
+                      icon="pi pi-pencil"
+                      className="p-button-sm p-button-text p-button-warning"
+                      title="Editar"
+                      onClick={() => {
+                        setOrdenSeleccionada(row);
+                        setShowEditarOrden(true);
+                      }}
+                    />
+                    <Button
+                      icon="pi pi-trash"
+                      className="p-button-sm p-button-text p-button-danger"
+                      title="Eliminar"
+                      onClick={() => {
+                        setOrdenAEliminar(row);
+                        setShowConfirmDelete(true);
+                      }}
+                    />
+                  </div>
+                )}
+                style={{ width: "7rem" }}
+              />
             </DataTable>
           </div>
         </div>
+      {/* Diálogo para agregar orden */}
+      <AgregarOrdenDialog
+        visible={showAgregarOrden}
+        onHide={() => setShowAgregarOrden(false)}
+        onRefresh={() => fetchFichaYSolicitudes(subpartidaFiltro, anoFiltro)}
+        subpartidaId={fichaSeleccionada?.id ?? 0}
+        subpartidas={opcionesSubpartida.map(opt => opt.value)}
+      />
+      {/* Diálogo para editar orden */}
+      <EditarOrdenDialog
+        visible={showEditarOrden}
+        onHide={() => setShowEditarOrden(false)}
+        onRefresh={() => fetchFichaYSolicitudes(subpartidaFiltro, anoFiltro)}
+        orden={ordenSeleccionada}
+      />
+      {/* Diálogo de confirmación para eliminar */}
+      {showConfirmDelete && (
+        <Dialog header="Confirmar eliminación" visible={showConfirmDelete} style={{ width: "30vw" }} onHide={() => setShowConfirmDelete(false)}>
+          <div className="p-4">
+            <p className="mb-4">¿Está seguro que desea eliminar la orden <b>#{ordenAEliminar?.id}</b>?</p>
+            <div className="flex justify-end gap-2">
+              <Button label="Cancelar" icon="pi pi-times" className="p-button-outlined p-button-secondary" onClick={() => setShowConfirmDelete(false)} />
+              <Button label="Eliminar" icon="pi pi-trash" className="p-button-danger" onClick={async () => {
+                if (!ordenAEliminar) return;
+                try {
+                  const response = await fetch(`${API_BASE}solicitud_presupuesto/${ordenAEliminar.id}/`, { method: "DELETE" });
+                  if (!response.ok) throw new Error("Error al eliminar la orden");
+                  toast.current?.show({ severity: "success", summary: "Eliminado", detail: "Orden eliminada correctamente", life: 2000 });
+                  setShowConfirmDelete(false);
+                  setOrdenAEliminar(null);
+                  fetchFichaYSolicitudes(subpartidaFiltro, anoFiltro);
+                } catch (error) {
+                  toast.current?.show({ severity: "error", summary: "Error", detail: `Error al eliminar: ${(error as any).message}`, life: 3000 });
+                }
+              }} />
+            </div>
+          </div>
+        </Dialog>
+      )}
       </div>
     </>
   );

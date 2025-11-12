@@ -21,7 +21,7 @@ export default function ProyectosPage() {
           </div>
 
           {/* Componente principal */}
-          <Proyectos />
+          <Proyectos /> 
         </div>
       </TabPanel>
     </TabView>
