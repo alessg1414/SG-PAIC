@@ -12,6 +12,8 @@ import { FilterMatchMode } from "primereact/api";
 import { API_BASE } from "@/utils/api";
 import AgregarOrdenDialog from "./AgregarOrdenDialog";
 import EditarOrdenDialog from "./EditarOrdenDialog";
+import AgregarSubpartidaDialog from "./AgregarSubpartidaDialog";
+import EditarSubpartidaDialog from "./EditarSubpartidaDialog";
 
 // Interfaces
 interface SubpartidaContratacion {
@@ -85,6 +87,9 @@ export default function PresupuestosTable() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [expandedRows, setExpandedRows] = useState<{ [key: number]: boolean }>({});
   const [isMounted, setIsMounted] = useState(false);
+  // Diálogos para subpartida
+  const [showAgregarSubpartida, setShowAgregarSubpartida] = useState(false);
+  const [showEditarSubpartida, setShowEditarSubpartida] = useState(false);
 
   // Cargar subpartidas al montar
   useEffect(() => {
@@ -438,14 +443,15 @@ export default function PresupuestosTable() {
                   <Button
                     label="Añadir subpartido"
                     icon="pi pi-plus"
-                    className="flex-1 bg-[#CDA95F] hover:bg-[#b8934d] text-white font-semibold py-2 px-3 
-                               rounded-lg shadow-md transition-all duration-300 text-sm"
+                    className="flex-1 bg-[#CDA95F] hover:bg-[#b8934d] text-white font-semibold py-2 px-3 rounded-lg shadow-md transition-all duration-300 text-sm"
+                    onClick={() => setShowAgregarSubpartida(true)}
                   />
                   <Button
                     label="Editar subpartido"
                     icon="pi pi-pencil"
-                    className="flex-1 bg-white/10 hover:bg-white/20 text-white font-semibold py-2 px-3 
-                               rounded-lg shadow-md transition-all duration-300 text-sm"
+                    className="flex-1 bg-white/10 hover:bg-white/20 text-white font-semibold py-2 px-3 rounded-lg shadow-md transition-all duration-300 text-sm"
+                    onClick={() => setShowEditarSubpartida(true)}
+                    disabled={!fichaSeleccionada}
                   />
                 </div>
               </div>
@@ -552,6 +558,25 @@ export default function PresupuestosTable() {
         onHide={() => setShowEditarOrden(false)}
         onRefresh={() => fetchFichaYSolicitudes(subpartidaFiltro, anoFiltro)}
         orden={ordenSeleccionada}
+      />
+      {/* Diálogo para agregar subpartida */}
+      <AgregarSubpartidaDialog
+        visible={showAgregarSubpartida}
+        onHide={() => setShowAgregarSubpartida(false)}
+        onSave={() => {
+          fetchSubpartidas();
+          setShowAgregarSubpartida(false);
+        }}
+      />
+      {/* Diálogo para editar subpartida */}
+      <EditarSubpartidaDialog
+        visible={showEditarSubpartida}
+        onHide={() => setShowEditarSubpartida(false)}
+        onSave={() => {
+          fetchSubpartidas();
+          setShowEditarSubpartida(false);
+        }}
+        subpartidaData={fichaSeleccionada}
       />
       {/* Diálogo de confirmación para eliminar */}
       {showConfirmDelete && (
