@@ -62,8 +62,31 @@ export default function EditarOrdenDialog({ visible, onHide, onRefresh, orden }:
 		if (!formData) return;
 		setSaving(true);
 		try {
-			const payload = { ...formData };
-			const response = await fetch(`${API_BASE}solicitud_presupuesto/${formData.id}/`, {
+			const payload = {
+				id: formData.id,
+				descripcion: formData.descripcion,
+				fecha_solicitud_boleto: formData.fecha_solicitud_boleto,
+				hora_solicitud_boleto: formData.hora_solicitud_boleto,
+				oficio_solicitud: formData.oficio_solicitud,
+				fecha_respuesta_solicitud: formData.fecha_respuesta_solicitud,
+				hora_respuesta_solicitud: formData.hora_respuesta_solicitud,
+				cumple_solicitud: formData.cumple_solicitud,
+				fecha_solicitud_emision: formData.fecha_solicitud_emision,
+				hora_solicitud_emision: formData.hora_solicitud_emision,
+				oficio_emision: formData.oficio_emision,
+				fecha_respuesta_emision: formData.fecha_respuesta_emision,
+				hora_respuesta_emision: formData.hora_respuesta_emision,
+				cumple_emision: formData.cumple_emision,
+				fecha_recibido_conforme: formData.fecha_recibido_conforme,
+				hora_recibido_conforme: formData.hora_recibido_conforme,
+				oficio_recepcion: formData.oficio_recepcion,
+				numero_factura: formData.numero_factura,
+				total_factura: formData.total_factura,
+				fecha_entrega_direccion: formData.fecha_entrega_direccion,
+				estado: formData.estado,
+				activo: formData.activo
+			};
+			const response = await fetch(`${API_BASE}solicitud_presupuesto/`, {
 				method: "PUT",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(payload),

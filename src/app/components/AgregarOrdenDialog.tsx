@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { Calendar } from "primereact/calendar";
@@ -18,19 +18,24 @@ interface AgregarOrdenDialogProps {
 }
 
 export default function AgregarOrdenDialog({ visible, onHide, onRefresh, subpartidaId, subpartidas }: AgregarOrdenDialogProps) {
-		const handleDropdownChange = (value: string) => {
-			setFormData({ ...formData, subpartida: value });
-		};
 	const toast = useRef<Toast>(null);
 	const [formData, setFormData] = useState({
 		subpartida_contratacion_id: subpartidaId,
-		subpartida: "",
 		descripcion: "",
 		fecha_solicitud_boleto: "",
 		hora_solicitud_boleto: "",
 		oficio_solicitud: "",
+		total_factura: "",
 	});
 	const [saving, setSaving] = useState(false);
+
+	// Actualizar subpartida_contratacion_id cuando cambia la prop
+	useEffect(() => {
+		setFormData(prev => ({
+			...prev,
+			subpartida_contratacion_id: subpartidaId
+		}));
+	}, [subpartidaId]);
 
 	const handleChange = (e: any) => {
 		setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -41,7 +46,7 @@ export default function AgregarOrdenDialog({ visible, onHide, onRefresh, subpart
 	};
 
 	const handleSubmit = async () => {
-		if (!formData.subpartida || !formData.descripcion || !formData.fecha_solicitud_boleto || !formData.hora_solicitud_boleto || !formData.oficio_solicitud) {
+		if (!formData.descripcion || !formData.fecha_solicitud_boleto || !formData.hora_solicitud_boleto || !formData.oficio_solicitud || !formData.total_factura) {
 			toast.current?.show({
 				severity: "warn",
 				summary: "Campos requeridos",
@@ -50,10 +55,28 @@ export default function AgregarOrdenDialog({ visible, onHide, onRefresh, subpart
 			});
 			return;
 		}
+		
+		// Validar que total_factura sea un número válido
+		const totalFacturaNum = parseFloat(formData.total_factura);
+		if (isNaN(totalFacturaNum) || totalFacturaNum <= 0) {
+			toast.current?.show({
+				severity: "warn",
+				summary: "Total inválido",
+				detail: "El total de factura debe ser un número mayor a 0.",
+				life: 3000,
+			});
+			return;
+		}
+		
 		setSaving(true);
 		try {
 			const payload = {
-				...formData,
+				subpartida_contratacion_id: formData.subpartida_contratacion_id,
+				descripcion: formData.descripcion,
+				fecha_solicitud_boleto: formData.fecha_solicitud_boleto,
+				hora_solicitud_boleto: formData.hora_solicitud_boleto,
+				oficio_solicitud: formData.oficio_solicitud,
+				total_factura: totalFacturaNum,
 			};
 			const response = await fetch(`${API_BASE}solicitud_presupuesto/`, {
 				method: "POST",
@@ -71,11 +94,11 @@ export default function AgregarOrdenDialog({ visible, onHide, onRefresh, subpart
 			onHide();
 			setFormData({
 				subpartida_contratacion_id: subpartidaId,
-				subpartida: "",
 				descripcion: "",
 				fecha_solicitud_boleto: "",
 				hora_solicitud_boleto: "",
 				oficio_solicitud: "",
+				total_factura: "",
 			});
 		} catch (error) {
 			toast.current?.show({
@@ -94,16 +117,6 @@ export default function AgregarOrdenDialog({ visible, onHide, onRefresh, subpart
 			<Toast ref={toast} />
 			<div className="p-6 space-y-6">
 				<div className="grid grid-cols-2 gap-4">
-								<div className="flex flex-col col-span-2">
-									<label className="font-semibold text-gray-700">Subpartida</label>
-									<Dropdown
-										value={formData.subpartida}
-										options={subpartidas.map(sub => ({ label: sub, value: sub }))}
-										  onChange={(e: { value: string }) => handleDropdownChange(e.value)}
-										placeholder="Seleccione subpartida"
-										className="w-full p-2 border border-gray-300 rounded-lg"
-									/>
-								</div>
 					<div className="flex flex-col col-span-2">
 						<label className="font-semibold text-gray-700">Descripción</label>
 						<InputText name="descripcion" value={formData.descripcion} onChange={handleChange} placeholder="Ingrese la descripción" className="w-full p-2 border border-gray-300 rounded-lg" />
@@ -117,8 +130,12 @@ export default function AgregarOrdenDialog({ visible, onHide, onRefresh, subpart
 						<InputText name="hora_solicitud_boleto" value={formData.hora_solicitud_boleto} onChange={handleChange} placeholder="Ej: 14:30" className="w-full p-2 border border-gray-300 rounded-lg" />
 					</div>
 					<div className="flex flex-col col-span-2">
-						<label className="font-semibold text-gray-700">Oficio</label>
+						<label className="mb-2 font-semibold text-gray-700">Oficio de solicitud</label>
 						<InputText name="oficio_solicitud" value={formData.oficio_solicitud} onChange={handleChange} placeholder="Ingrese el oficio" className="w-full p-2 border border-gray-300 rounded-lg" />
+					</div>
+					<div className="flex flex-col col-span-2">
+						<label className="mb-2 font-semibold text-gray-700">Total Factura (₡)</label>
+						<InputText name="total_factura" type="number" value={formData.total_factura} onChange={handleChange} placeholder="Ingrese el monto total" className="w-full p-2 border border-gray-300 rounded-lg" />
 					</div>
 				</div>
 				<div className="flex justify-end gap-3">

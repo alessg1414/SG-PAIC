@@ -4,7 +4,8 @@ import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { InputNumber } from "primereact/inputnumber";
 import { Button } from "primereact/button";
-import { useState } from "react";
+import { Toast } from "primereact/toast";
+import { useState, useRef } from "react";
 import { API_BASE } from "@/utils/api";
 
 interface AgregarSubpartidaDialogProps {
@@ -18,6 +19,7 @@ export default function AgregarSubpartidaDialog({
   onHide, 
   onSave 
 }: AgregarSubpartidaDialogProps) {
+  const toast = useRef<Toast>(null);
   const [formData, setFormData] = useState({
     subpartida: "",
     ano_contrato: "",
@@ -51,7 +53,12 @@ export default function AgregarSubpartidaDialog({
 
       if (camposFaltantes.length > 0) {
         setCamposConError(camposFaltantes);
-        setErrorMensaje("Por favor complete todos los campos obligatorios.");
+        toast.current?.show({
+          severity: "warn",
+          summary: "Campos requeridos",
+          detail: "Por favor complete todos los campos obligatorios.",
+          life: 3000,
+        });
         return;
       }
 
@@ -66,16 +73,33 @@ export default function AgregarSubpartidaDialog({
 
       if (!response.ok) {
         const errorData = await response.json();
-        setErrorMensaje(errorData.error || "Error al guardar la subpartida");
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: errorData.error || "Error al guardar la subpartida",
+          life: 3000,
+        });
         return;
       }
 
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Subpartida creada correctamente",
+        life: 2000,
+      });
+      
       onSave();
       onHide();
       limpiarFormulario();
     } catch (error) {
       console.error("Error al guardar la nueva subpartida:", error);
-      setErrorMensaje("Error al conectar con el servidor");
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al conectar con el servidor",
+        life: 3000,
+      });
     }
   };
 
@@ -96,14 +120,16 @@ export default function AgregarSubpartidaDialog({
   };
 
   return (
-    <Dialog
-      header="Añadir subpartida"
-      visible={visible}
-      style={{ width: "50vw", maxWidth: "700px" }}
-      modal
-      onHide={onHide}
-      className="p-dialog-custom"
-      footer={
+    <>
+      <Toast ref={toast} />
+      <Dialog
+        header="Añadir subpartida"
+        visible={visible}
+        style={{ width: "50vw", maxWidth: "700px" }}
+        modal
+        onHide={onHide}
+        className="p-dialog-custom"
+        footer={
         <div className="flex justify-end gap-2 mt-4">
           <Button
             label="Cancelar"
@@ -244,6 +270,7 @@ export default function AgregarSubpartidaDialog({
           />
         </div>
       </div>
-    </Dialog>
+      </Dialog>
+    </>
   );
 }

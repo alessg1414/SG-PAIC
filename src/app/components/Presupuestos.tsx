@@ -90,6 +90,7 @@ export default function PresupuestosTable() {
   // Diálogos para subpartida
   const [showAgregarSubpartida, setShowAgregarSubpartida] = useState(false);
   const [showEditarSubpartida, setShowEditarSubpartida] = useState(false);
+  const [showConfirmDeleteSubpartida, setShowConfirmDeleteSubpartida] = useState(false);
 
   // Cargar subpartidas al montar
   useEffect(() => {
@@ -376,8 +377,14 @@ export default function PresupuestosTable() {
           {/* Ficha del subpartido */}
           <div className="lg:col-span-1">
             {fichaSeleccionada ? (
-              <div className="bg-gradient-to-br from-[#172951] to-[#1a3a6b] text-white p-6 rounded-xl shadow-lg">
-                <h2 className="text-xl font-bold mb-4 border-b border-white/30 pb-3">
+              <div className="bg-gradient-to-br from-[#172951] to-[#1a3a6b] text-white p-6 rounded-xl shadow-lg relative">
+                <Button
+                  icon="pi pi-trash"
+                  className="absolute top-4 right-4 p-button-rounded p-button-text p-button-danger bg-red-500/20 hover:bg-red-500/40 text-white w-8 h-8 flex items-center justify-center transition-all duration-300"
+                  onClick={() => setShowConfirmDeleteSubpartida(true)}
+                  title="Eliminar subpartida"
+                />
+                <h2 className="text-xl font-bold mb-4 border-b border-white/30 pb-3 pr-8">
                   {fichaSeleccionada.nombre_subpartida}
                 </h2>
                 
@@ -588,12 +595,40 @@ export default function PresupuestosTable() {
               <Button label="Eliminar" icon="pi pi-trash" className="p-button-danger" onClick={async () => {
                 if (!ordenAEliminar) return;
                 try {
-                  const response = await fetch(`${API_BASE}solicitud_presupuesto/${ordenAEliminar.id}/`, { method: "DELETE" });
+                  const response = await fetch(`${API_BASE}solicitud_presupuesto/?id=${ordenAEliminar.id}`, { method: "DELETE" });
                   if (!response.ok) throw new Error("Error al eliminar la orden");
                   toast.current?.show({ severity: "success", summary: "Eliminado", detail: "Orden eliminada correctamente", life: 2000 });
                   setShowConfirmDelete(false);
                   setOrdenAEliminar(null);
                   fetchFichaYSolicitudes(subpartidaFiltro, anoFiltro);
+                } catch (error) {
+                  toast.current?.show({ severity: "error", summary: "Error", detail: `Error al eliminar: ${(error as any).message}`, life: 3000 });
+                }
+              }} />
+            </div>
+          </div>
+        </Dialog>
+      )}
+      {/* Diálogo de confirmación para eliminar subpartida */}
+      {showConfirmDeleteSubpartida && fichaSeleccionada && (
+        <Dialog header="Confirmar eliminación" visible={showConfirmDeleteSubpartida} style={{ width: "30vw" }} onHide={() => setShowConfirmDeleteSubpartida(false)}>
+          <div className="p-4">
+            <p className="mb-4">¿Está seguro que desea eliminar la subpartida <b>{fichaSeleccionada.nombre_subpartida}</b>?</p>
+            <p className="text-sm text-gray-600 mb-4">Esta acción eliminará también todas las órdenes asociadas.</p>
+            <div className="flex justify-end gap-2">
+              <Button label="Cancelar" icon="pi pi-times" className="p-button-outlined p-button-secondary" onClick={() => setShowConfirmDeleteSubpartida(false)} />
+              <Button label="Eliminar" icon="pi pi-trash" className="p-button-danger" onClick={async () => {
+                if (!fichaSeleccionada) return;
+                try {
+                  const response = await fetch(`${API_BASE}subpartida_contratacion/?id=${fichaSeleccionada.id}`, { method: "DELETE" });
+                  if (!response.ok) throw new Error("Error al eliminar la subpartida");
+                  toast.current?.show({ severity: "success", summary: "Eliminado", detail: "Subpartida eliminada correctamente", life: 2000 });
+                  setShowConfirmDeleteSubpartida(false);
+                  setFichaSeleccionada(null);
+                  setSubpartidaFiltro("");
+                  setAnoFiltro("");
+                  setSolicitudes([]);
+                  fetchSubpartidas();
                 } catch (error) {
                   toast.current?.show({ severity: "error", summary: "Error", detail: `Error al eliminar: ${(error as any).message}`, life: 3000 });
                 }

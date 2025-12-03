@@ -4,7 +4,8 @@ import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { InputNumber } from "primereact/inputnumber";
 import { Button } from "primereact/button";
-import { useState, useEffect } from "react";
+import { Toast } from "primereact/toast";
+import { useState, useEffect, useRef } from "react";
 import { API_BASE } from "@/utils/api";
 
 interface EditarSubpartidaDialogProps {
@@ -20,6 +21,7 @@ export default function EditarSubpartidaDialog({
   onSave,
   subpartidaData,
 }: EditarSubpartidaDialogProps) {
+  const toast = useRef<Toast>(null);
   const [formData, setFormData] = useState({
     id: 0,
     subpartida: "",
@@ -71,14 +73,19 @@ export default function EditarSubpartidaDialog({
 
       if (camposFaltantes.length > 0) {
         setCamposConError(camposFaltantes);
-        setErrorMensaje("Por favor complete todos los campos obligatorios.");
+        toast.current?.show({
+          severity: "warn",
+          summary: "Campos requeridos",
+          detail: "Por favor complete todos los campos obligatorios.",
+          life: 3000,
+        });
         return;
       }
 
       setCamposConError([]);
       setErrorMensaje(null);
 
-      const response = await fetch(`${API_BASE}subpartida_contratacion/${formData.id}/`, {
+      const response = await fetch(`${API_BASE}subpartida_contratacion/`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -86,27 +93,46 @@ export default function EditarSubpartidaDialog({
 
       if (!response.ok) {
         const errorData = await response.json();
-        setErrorMensaje(errorData.error || "Error al actualizar la subpartida");
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: errorData.error || "Error al actualizar la subpartida",
+          life: 3000,
+        });
         return;
       }
 
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Subpartida actualizada correctamente",
+        life: 2000,
+      });
+      
       onSave();
       onHide();
     } catch (error) {
       console.error("Error al actualizar la subpartida:", error);
-      setErrorMensaje("Error al conectar con el servidor");
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al conectar con el servidor",
+        life: 3000,
+      });
     }
   };
 
   return (
-    <Dialog
-      header="Editar subpartida"
-      visible={visible}
-      style={{ width: "50vw", maxWidth: "700px" }}
-      modal
-      onHide={onHide}
-      className="p-dialog-custom"
-      footer={
+    <>
+      <Toast ref={toast} />
+      <Dialog
+        header="Editar subpartida"
+        visible={visible}
+        style={{ width: "50vw", maxWidth: "700px" }}
+        modal
+        onHide={onHide}
+        className="p-dialog-custom"
+        footer={
         <div className="flex justify-end gap-2 mt-4">
           <Button
             label="Cancelar"
@@ -235,6 +261,7 @@ export default function EditarSubpartidaDialog({
           />
         </div>
       </div>
-    </Dialog>
+      </Dialog>
+    </>
   );
 }
