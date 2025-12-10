@@ -79,6 +79,18 @@ export default function Sidebar() {
 
         <li>
           <Button
+            label="Presupuestos"
+            icon="pi pi-dollar"
+            className="w-full flex items-center justify-start bg-gray-100 text-gray-700 hover:bg-[#CDA95F] hover:text-white transition-all duration-300 p-3 rounded-lg"
+            onClick={() => {
+              router.push("/dashboard/presupuestos");
+              setSidebarVisible(false);
+            }}
+          />
+        </li>
+
+        <li>
+          <Button
             label="Ver Estadísticas"
             icon="pi pi-chart-bar"
             className="w-full flex items-center justify-start bg-gray-100 text-gray-700 hover:bg-[#CDA95F] hover:text-white transition-all duration-300 p-3 rounded-lg"
