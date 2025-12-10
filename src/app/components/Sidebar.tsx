@@ -10,6 +10,8 @@ export default function Sidebar() {
   const { isSidebarVisible, setSidebarVisible } = useSidebar();
   const router = useRouter();
   const [showSubmenu, setShowSubmenu] = useState(false);
+  /*submenu de acuerdos de viajes */
+  const [showViajesSubmenu, setShowViajesSubmenu] = useState(false);
 
   return (
     <PrimeSidebar
@@ -128,6 +130,59 @@ export default function Sidebar() {
             </ul>
           )}
         </li>
+
+        {/*Viajes al exterior */}
+        <li>
+        <Button
+        label="Viajes al Exterior"
+        icon="pi pi-globe"
+        iconPos="left"
+        className={`w-full flex items-center justify-between bg-gray-100 text-gray-700 hover:bg-[#CDA95F] hover:text-white transition-all duration-300 p-3 rounded-lg ${
+          showViajesSubmenu ? "bg-[#CDA95F] text-black" : ""
+        }`}
+        onClick={() => setShowViajesSubmenu((prev) => !prev)}
+      >
+        <span className="ml-auto pr-0">
+          <i className={`pi pi-chevron-${showViajesSubmenu ? "up" : "down"}`} />
+        </span>
+      </Button>
+
+      {showViajesSubmenu && (
+        <ul className="pl-6 mt-2 space-y-2">
+          <li>
+            <Button
+              label="Datos"
+              className="w-full justify-start bg-gray-100 text-gray-700 hover:bg-[#CDA95F] hover:text-white transition-all duration-300 p-2 rounded-md"
+              onClick={() => {
+                router.push("/dashboard/acuerdosViajes");
+                setSidebarVisible(false);
+              }}
+            />
+          </li>
+          <li>
+            <Button
+              label="Ver estadísticas"
+              className="w-full justify-start bg-gray-100 text-gray-700 hover:bg-[#CDA95F] hover:text-white transition-all duration-300 p-2 rounded-md"
+              onClick={() => {
+                router.push("/dashboard/acuerdosViajesEstadisticas");
+                setSidebarVisible(false);
+              }}
+            />
+          </li>
+          <li>
+            <Button
+              label="Mapa"
+              className="w-full justify-start bg-gray-100 text-gray-700 hover:bg-[#CDA95F] hover:text-white transition-all duration-300 p-2 rounded-md"
+              onClick={() => {
+                router.push("/dashboard/acuerdosViajesMapa");
+                setSidebarVisible(false);
+              }}
+            />
+          </li>
+        </ul>
+      )}
+      </li>
+
       </ul>
     </PrimeSidebar>
   );
