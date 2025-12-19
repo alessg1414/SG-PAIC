@@ -1,6 +1,6 @@
 "use client";
 
-import Proyectos from "@/app/components/Proyectos";
+import Proyectos from "@/app/components/ListaDeProyectos";
 import { TabView, TabPanel } from "primereact/tabview";
 
 export default function ProyectosPage() {
@@ -21,7 +21,7 @@ export default function ProyectosPage() {
           </div>
 
           {/* Componente principal */}
-          <Proyectos /> 
+          <Proyectos />
         </div>
       </TabPanel>
     </TabView>
